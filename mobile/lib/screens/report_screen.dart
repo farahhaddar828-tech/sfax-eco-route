@@ -198,7 +198,7 @@ class _ReportScreenState extends State<ReportScreen> {
                         initialCenter: _pos!, initialZoom: 16, onTap: (_, p) => setState(() => _pos = p)),
                     children: [
                       TileLayer(
-                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          urlTemplate: 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
                           userAgentPackageName: 'tn.ecoroute.app'),
                       MarkerLayer(markers: [
                         Marker(
