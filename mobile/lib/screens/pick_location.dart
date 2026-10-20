@@ -134,11 +134,11 @@ class _PickLocationScreenState extends State<PickLocationScreen> {
           ),
           children: [
             TileLayer(
-              urlTemplate: 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               userAgentPackageName: 'tn.ecoroute.app',
             ),
             const RichAttributionWidget(
-              attributions: [TextSourceAttribution('© OpenStreetMap contributors / CARTO')],
+              attributions: [TextSourceAttribution('© OpenStreetMap contributors')],
             ),
           ],
         ),

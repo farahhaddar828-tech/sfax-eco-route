@@ -89,7 +89,7 @@ class MapScreenState extends State<MapScreen> {
           options: MapOptions(initialCenter: _me ?? sfaxCenter, initialZoom: 13, onTap: (_, p) => _onTap(p)),
           children: [
             TileLayer(
-              urlTemplate: 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               userAgentPackageName: 'tn.ecoroute.app',
             ),
             CircleLayer(circles: [
@@ -138,7 +138,7 @@ class MapScreenState extends State<MapScreen> {
               if (_from != null) Marker(point: _from!, width: 20, height: 20, child: _dot(Colors.black)),
               if (_to != null) Marker(point: _to!, width: 20, height: 20, child: _dot(cs.primary)),
             ]),
-            const RichAttributionWidget(attributions: [TextSourceAttribution('© OpenStreetMap contributors / CARTO')]),
+            const RichAttributionWidget(attributions: [TextSourceAttribution('© OpenStreetMap contributors')]),
           ],
         ),
         Positioned(
