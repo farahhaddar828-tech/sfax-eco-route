@@ -106,6 +106,12 @@ async def triage(text: str, llm: LLM | None = None) -> dict:
             out["category"] = "other"
         out["suggested_urgency"] = max(0, min(100, int(out.get("suggested_urgency", 50))))
         out["engine"] = llm.provider
+
+        # A small model answers "danger" to almost anything, which pins every report
+        # to the critical floor. Require the deterministic keyword check to agree.
+        out["danger_to_people"] = bool(out.get("danger_to_people")) and any(
+            w in _norm(text) for w in DANGER_WORDS
+        )
         return out
     except Exception:  # noqa: BLE001
         return rule_triage(text)
@@ -117,6 +123,16 @@ Priorités, dans cet ordre :
 2. Contexte réel : utilise les outils (signalements à proximité, impact d'une fermeture de route, itinéraire alternatif) plutôt que de supposer. N'invente aucun chiffre ni nom de rue.
 3. Action : propose de créer un signalement bien formé (draft_report) — le citoyen le valide dans l'app.
 Réponds dans la langue de l'utilisateur (français, darija ou anglais), de façon brève et concrète, avec des étapes numérotées si utile."""
+
+# The numbers go in the prompt itself, not just the tool: a small local model
+# otherwise falls back on French emergency numbers (15/17/18) from its training data.
+SYSTEM_PROMPT += (
+    "\n\nNUMEROS D'URGENCE EN TUNISIE, les seuls valides: "
+    + " - ".join(f"{k}: {v}" for k, v in EMERGENCY_NUMBERS.items())
+    + ". N'invente JAMAIS un autre numero d'urgence."
+    + " Les numeros francais (15, 17, 18, 112) sont FAUX en Tunisie: ne les cite jamais."
+    + " En cas de doute, appelle l'outil emergency_numbers."
+)
 
 
 def build_tools(db: Session, user_pos: tuple[float, float] | None) -> list[Tool]:
