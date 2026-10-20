@@ -1,0 +1,23 @@
+# Downloads the complete Grand Sfax road network into the shared volume.
+# Re-run to refresh:  kubectl -n eco-route delete job osm-import && kubectl apply -k infra/k8s
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: osm-import
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: import
+          image: ghcr.io/OWNER/eco-route-backend:latest
+          command: ["sh", "-c", "pip install --user -q osmnx && python scripts/import_osm.py --out /data/graph/sfax_drive.graphml"]
+          env: [{ name: HOME, value: /tmp }]
+          resources:
+            requests: { cpu: 500m, memory: 1Gi }
+          volumeMounts:
+            - { name: data, mountPath: /data }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: ecoroute-data }

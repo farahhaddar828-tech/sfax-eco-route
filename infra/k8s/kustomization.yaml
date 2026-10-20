@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: eco-route
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - postgres.yaml
+  - backend.yaml
+  - osm-import-job.yaml
+  - n8n.yaml
+  - ingress.yaml
+images:
+  - name: ghcr.io/OWNER/eco-route-backend
+    newName: ghcr.io/OWNER/eco-route-backend   # CI rewrites this with the commit SHA tag
+    newTag: latest

@@ -1,0 +1,94 @@
+# Full local stack:   cp .env.example .env && docker compose up -d --build
+# With a local LLM:   docker compose --profile ai up -d   (then: docker compose exec ollama ollama pull qwen2.5:7b)
+#
+#   API + docs     http://localhost:8000/docs
+#   n8n            http://localhost:5678
+#   Grafana        http://localhost:3000   (admin / $GRAFANA_ADMIN_PASSWORD)
+#   Prometheus     http://localhost:9090
+
+name: eco-route
+
+x-backend-env: &backend-env
+  DATABASE_URL: postgresql+psycopg://ecoroute:${POSTGRES_PASSWORD}@db:5432/ecoroute
+  N8N_WEBHOOK_URL: http://n8n:5678/webhook/eco-route-report
+  NOTIFY_EMAIL: ${NOTIFY_EMAIL:-farahhaddarrr@gmail.com}
+  LLM_PROVIDER: ${LLM_PROVIDER:-none}
+  LLM_MODEL: ${LLM_MODEL:-}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  XAI_API_KEY: ${XAI_API_KEY:-}
+  OLLAMA_BASE_URL: http://ollama:11434
+  GRAPH_PATH: data/sfax_drive.graphml
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ecoroute
+      POSTGRES_USER: ecoroute
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecoroute"]
+      interval: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    environment: *backend-env
+    ports: ["8000:8000"]
+    volumes:
+      - uploads:/data/uploads
+      - ./backend/data:/app/data          # persists the imported OSM graph
+    depends_on:
+      db: { condition: service_healthy }
+
+  # One-shot: download the full Sfax road network into backend/data/
+  #   docker compose run --rm osm-import
+  osm-import:
+    build: ./backend
+    profiles: ["tools"]
+    user: root
+    volumes: [./backend/data:/app/data]
+    entrypoint: ["sh", "-c", "pip install -q osmnx && python scripts/import_osm.py --out data/sfax_drive.graphml"]
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    ports: ["5678:5678"]
+    environment:
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      GENERIC_TIMEZONE: Africa/Tunis
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      ECOROUTE_FROM_EMAIL: ${ECOROUTE_FROM_EMAIL:-}
+      ECOROUTE_NOTIFY_EMAIL: ${NOTIFY_EMAIL:-farahhaddarrr@gmail.com}
+      ECOROUTE_API_URL: http://backend:8000
+    volumes:
+      - n8ndata:/home/node/.n8n
+      - ./n8n/workflows:/workflows:ro
+    # import the workflows on first boot (idempotent: same IDs are overwritten)
+    entrypoint: ["sh", "-c", "n8n import:workflow --separate --input=/workflows || true; exec n8n start"]
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ai"]
+    volumes: [ollama:/root/.ollama]
+    ports: ["11434:11434"]
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+    ports: ["9090:9090"]
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./infra/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["3000:3000"]
+    depends_on: [prometheus]
+
+volumes: { pgdata: {}, uploads: {}, n8ndata: {}, ollama: {} }

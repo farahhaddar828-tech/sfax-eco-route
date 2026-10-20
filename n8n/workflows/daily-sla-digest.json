@@ -1,0 +1,142 @@
+{
+  "id": "ecoRouteDigest01",
+  "name": "Eco-Route – Daily SLA digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "b1",
+      "name": "Every day 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ ($env.ECOROUTE_API_URL || 'http://backend:8000') + '/api/v1/analytics/dashboard' }}",
+        "options": {}
+      },
+      "id": "b2",
+      "name": "Get dashboard",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ ($env.ECOROUTE_API_URL || 'http://backend:8000') + '/api/v1/analytics/sla-breaches' }}",
+        "options": {}
+      },
+      "id": "b3",
+      "name": "Get SLA breaches",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $('Get dashboard').first().json;\nconst rows = $input.all().map(i => i.json).filter(r => r.id);\nconst tr = rows.map(r => `<tr><td>${r.category}</td><td>${r.road || ''}</td><td>${r.service}</td><td style=\\\"color:#b3261e\\\">${Math.abs(r.remaining_hours)} h</td></tr>`).join('');\nconst html = `<h2>Eco-Route – bilan du jour</h2>\n<p><b>${d.open}</b> signalements ouverts · <b>${d.urgent}</b> urgents · <b>${d.sla_breached}</b> hors délai · MTTR ${d.mean_time_to_resolve_h ?? '–'} h</p>\n${rows.length ? `<h3>Hors délai (SLA dépassé)</h3><table border=1 cellpadding=6 style=\\\"border-collapse:collapse\\\"><tr><th>Catégorie</th><th>Route</th><th>Service</th><th>Retard</th></tr>${tr}</table>` : '<p>Aucun dépassement de SLA 🎉</p>'}`;\nreturn [{ json: { subject: `[Eco-Route] Bilan quotidien – ${d.sla_breached} hors délai`, html } }];"
+      },
+      "id": "b4",
+      "name": "Build digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.ECOROUTE_FROM_EMAIL || 'eco-route@localhost' }}",
+        "toEmail": "={{ $env.ECOROUTE_NOTIFY_EMAIL || 'farahhaddarrr@gmail.com' }}",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "html",
+        "html": "={{ $json.html }}",
+        "options": {}
+      },
+      "id": "b5",
+      "name": "Email digest",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        960,
+        300
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "",
+          "name": "Eco-Route SMTP"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every day 08:00": {
+      "main": [
+        [
+          {
+            "node": "Get dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get dashboard": {
+      "main": [
+        [
+          {
+            "node": "Get SLA breaches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get SLA breaches": {
+      "main": [
+        [
+          {
+            "node": "Build digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build digest": {
+      "main": [
+        [
+          {
+            "node": "Email digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Africa/Tunis"
+  },
+  "active": false
+}

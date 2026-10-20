@@ -1,0 +1,2 @@
+admin_cidr   = "41.226.0.0/32"   # your public IP + /32
+budget_email = "you@example.com"

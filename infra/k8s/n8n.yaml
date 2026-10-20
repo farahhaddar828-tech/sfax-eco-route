@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: n8n-data
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: { requests: { storage: 1Gi } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: n8n
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: n8n } }
+  template:
+    metadata: { labels: { app: n8n } }
+    spec:
+      securityContext: { fsGroup: 1000 }
+      containers:
+        - name: n8n
+          image: docker.n8n.io/n8nio/n8n:latest
+          ports: [{ containerPort: 5678 }]
+          env:
+            - { name: GENERIC_TIMEZONE, value: Africa/Tunis }
+            - { name: N8N_BLOCK_ENV_ACCESS_IN_NODE, value: "false" }
+            - { name: ECOROUTE_API_URL, value: http://backend }
+            - name: ECOROUTE_NOTIFY_EMAIL
+              valueFrom: { configMapKeyRef: { name: ecoroute-config, key: NOTIFY_EMAIL } }
+            - name: N8N_ENCRYPTION_KEY
+              valueFrom: { secretKeyRef: { name: ecoroute-secrets, key: N8N_ENCRYPTION_KEY } }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 768Mi }
+          volumeMounts: [{ name: data, mountPath: /home/node/.n8n }]
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: n8n-data }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: n8n
+spec:
+  selector: { app: n8n }
+  ports: [{ port: 5678 }]

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ecoroute-config
+data:
+  ENVIRONMENT: prod
+  GRAPH_PATH: /data/graph/sfax_drive.graphml
+  UPLOAD_DIR: /data/uploads
+  N8N_WEBHOOK_URL: http://n8n:5678/webhook/eco-route-report
+  NOTIFY_EMAIL: farahhaddarrr@gmail.com
+  LLM_PROVIDER: none          # set to claude | openai | grok | ollama
+  LLM_MODEL: ""
+  OLLAMA_BASE_URL: http://ollama:11434

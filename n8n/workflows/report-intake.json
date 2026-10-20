@@ -1,0 +1,153 @@
+{
+  "id": "ecoRouteIntake01",
+  "name": "Eco-Route – Report intake & email",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "eco-route-report",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "a1",
+      "name": "Report webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "eco-route-report"
+    },
+    {
+      "parameters": {
+        "jsCode": "const p = $input.first().json.body;\nconst r = p.report;\nconst colors = {critical:'#b3261e', high:'#e07b1a', medium:'#c9a227', low:'#4f7a3a'};\nconst c = colors[r.priority_label] || '#4f7a3a';\nconst evt = p.event === 'report.resolved' ? '✅ Résolu' : (r.priority_label === 'critical' || r.danger_to_people ? '🔴 URGENT' : 'Nouveau');\nconst subject = `[Eco-Route] ${evt} – ${r.category_label} – ${r.zone || ''}`;\nconst html = `\n<div style=\"font-family:Arial,sans-serif;max-width:560px\">\n  <div style=\"background:#567d3a;color:#fff;padding:16px 20px;border-radius:10px 10px 0 0\">\n    <h2 style=\"margin:0\">Sfax Eco-Route</h2><div>${evt} signalement</div>\n  </div>\n  <div style=\"border:1px solid #ddd;border-top:0;padding:20px;border-radius:0 0 10px 10px\">\n    <p style=\"margin:0 0 8px\"><span style=\"background:${c};color:#fff;padding:3px 10px;border-radius:12px;font-weight:bold\">${r.priority_label.toUpperCase()} · ${r.priority_score}/100</span>&nbsp; SLA ${r.sla_hours} h</p>\n    ${r.danger_to_people ? '<p style=\"background:#fde7e5;color:#b3261e;padding:8px 12px;border-radius:8px;font-weight:bold\">⚠️ Danger pour les personnes signalé</p>' : ''}\n    <h3 style=\"margin:12px 0 4px\">${r.category_label}</h3>\n    <p style=\"margin:0;color:#555\">${r.road_name || ''} — ${r.zone || ''}</p>\n    <p style=\"white-space:pre-wrap\">${r.description}</p>\n    ${r.ai_summary ? `<p style=\"background:#f3f6ef;padding:10px;border-radius:8px\"><b>Résumé IA :</b> ${r.ai_summary}</p>` : ''}\n    <table style=\"font-size:14px\">\n      <tr><td><b>Service responsable</b></td><td>${r.service}</td></tr>\n      <tr><td><b>Criticité de la route</b></td><td>${Math.round(r.road_criticality*100)} %</td></tr>\n      <tr><td><b>Urgence citoyen</b></td><td>${r.citizen_urgency}/100</td></tr>\n      <tr><td><b>Référence</b></td><td>${r.id}</td></tr>\n    </table>\n    <p><a href=\"${r.maps_url}\" style=\"background:#567d3a;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none\">Voir sur la carte</a></p>\n  </div>\n</div>`;\nreturn [{ json: { to: p.notify_email, subject, html, priority: r.priority_label, event: p.event, report: r } }];"
+      },
+      "id": "a2",
+      "name": "Format email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.ECOROUTE_FROM_EMAIL || 'eco-route@localhost' }}",
+        "toEmail": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "html",
+        "html": "={{ $json.html }}",
+        "options": {}
+      },
+      "id": "a3",
+      "name": "Email city inbox",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        480,
+        300
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "",
+          "name": "Eco-Route SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $('Format email').item.json.priority }}",
+              "value2": "critical"
+            }
+          ]
+        }
+      },
+      "id": "a4",
+      "name": "Is critical?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.ECOROUTE_TELEGRAM_CHAT_ID }}",
+        "text": "={{ '🔴 ' + $('Format email').item.json.subject + '\\n' + $('Format email').item.json.report.maps_url }}",
+        "additionalFields": {}
+      },
+      "id": "a5",
+      "name": "Telegram alert (optional)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        960,
+        220
+      ],
+      "disabled": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": "Eco-Route Telegram"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Report webhook": {
+      "main": [
+        [
+          {
+            "node": "Format email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format email": {
+      "main": [
+        [
+          {
+            "node": "Email city inbox",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email city inbox": {
+      "main": [
+        [
+          {
+            "node": "Is critical?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is critical?": {
+      "main": [
+        [
+          {
+            "node": "Telegram alert (optional)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

@@ -1,0 +1,15 @@
+# k3s ships Traefik. Replace HOST with your domain, or use <EC2-IP>.nip.io for a free hostname.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: eco-route
+spec:
+  rules:
+    - host: api.HOST
+      http:
+        paths:
+          - { path: /, pathType: Prefix, backend: { service: { name: backend, port: { number: 80 } } } }
+    - host: n8n.HOST
+      http:
+        paths:
+          - { path: /, pathType: Prefix, backend: { service: { name: n8n, port: { number: 5678 } } } }
