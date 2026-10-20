@@ -16,3 +16,5 @@ mobile/.flutter-plugins*
 
 mobile/android/.gradle/
 mobile/android/local.properties
+
+docker-compose.override.yml

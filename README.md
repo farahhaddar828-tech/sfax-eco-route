@@ -28,7 +28,7 @@ flowchart LR
   API --> G
   API -- tool-calling agent --> LLM
   API -- "report.created webhook" --> N8N
-  N8N -- HTML email --> MAIL[(your.email@example.com)]
+  N8N -- HTML email --> MAIL[(City inbox)]
   N8N -- daily SLA digest --> MAIL
   PROM -- /metrics --> API
   OSM[(OpenStreetMap)] -. import job .-> G
