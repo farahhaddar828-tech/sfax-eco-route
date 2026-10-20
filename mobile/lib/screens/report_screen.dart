@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import '../api.dart';
 import '../location.dart';
 import '../models.dart';
+import 'pick_location.dart';
 
 class ReportScreen extends StatefulWidget {
   const ReportScreen({super.key, this.draft});
@@ -63,6 +64,13 @@ class _ReportScreenState extends State<ReportScreen> {
       final bytes = await x.readAsBytes();
       setState(() => _photo = bytes);
     }
+  }
+
+  Future<void> _pickLocation() async {
+    final picked = await Navigator.of(context).push<LatLng>(
+      MaterialPageRoute(builder: (_) => PickLocationScreen(initial: _pos ?? sfaxCenter)),
+    );
+    if (picked != null && mounted) setState(() => _pos = picked);
   }
 
   Future<void> _submit() async {
@@ -185,31 +193,54 @@ class _ReportScreenState extends State<ReportScreen> {
             ),
         ]),
         const SizedBox(height: 20),
-        Text('Emplacement — touchez la carte pour ajuster', style: Theme.of(context).textTheme.titleSmall),
+        Text('Emplacement', style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
-        ClipRRect(
+        InkWell(
           borderRadius: BorderRadius.circular(16),
-          child: SizedBox(
-            height: 200,
-            child: _pos == null
-                ? const Center(child: CircularProgressIndicator())
-                : FlutterMap(
-                    options: MapOptions(
-                        initialCenter: _pos!, initialZoom: 16, onTap: (_, p) => setState(() => _pos = p)),
-                    children: [
-                      TileLayer(
-                          urlTemplate: 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-                          userAgentPackageName: 'tn.ecoroute.app'),
-                      MarkerLayer(markers: [
-                        Marker(
-                            point: _pos!,
-                            width: 40,
-                            height: 40,
-                            alignment: Alignment.topCenter,
-                            child: Icon(Icons.location_pin, size: 40, color: cs.error)),
-                      ]),
-                    ],
-                  ),
+          onTap: _pos == null ? null : _pickLocation,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox(
+              height: 200,
+              child: _pos == null
+                  ? const Center(child: CircularProgressIndicator())
+                  : Stack(children: [
+                      // Preview only. Tapping opens the full-screen picker, which has a
+                      // search bar and a centred pin - this 200 px map was unusable for
+                      // actually choosing a point.
+                      AbsorbPointer(
+                        child: FlutterMap(
+                          // initialCenter only applies on first build, so rebuild the
+                          // preview whenever the chosen point changes
+                          key: ValueKey('${_pos!.latitude},${_pos!.longitude}'),
+                          options: MapOptions(initialCenter: _pos!, initialZoom: 16),
+                          children: [
+                            TileLayer(
+                                urlTemplate: 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+                                userAgentPackageName: 'tn.ecoroute.app'),
+                            MarkerLayer(markers: [
+                              Marker(
+                                  point: _pos!,
+                                  width: 40,
+                                  height: 40,
+                                  alignment: Alignment.topCenter,
+                                  child: Icon(Icons.location_pin, size: 40, color: cs.error)),
+                            ]),
+                          ],
+                        ),
+                      ),
+                      Positioned(
+                        left: 8,
+                        right: 8,
+                        bottom: 8,
+                        child: FilledButton.tonalIcon(
+                          onPressed: _pickLocation,
+                          icon: const Icon(Icons.search),
+                          label: const Text("Rechercher ou ajuster"),
+                        ),
+                      ),
+                    ]),
+            ),
           ),
         ),
         const SizedBox(height: 20),
