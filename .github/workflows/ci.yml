@@ -35,7 +35,8 @@ jobs:
         with: { channel: stable, cache: true }
       # Generates the missing platform folders; existing files (our AndroidManifest) are kept
       - run: flutter create . --org tn.ecoroute --project-name eco_route --platforms=android,web
-      - run: rm -f test/widget_test.dart      - run: flutter pub get
+      - run: rm -f test/widget_test.dart
+      - run: flutter pub get
       - run: flutter analyze --no-fatal-infos
       - run: flutter test
       - run: flutter build apk --release --dart-define=API_URL=${{ vars.API_URL || 'http://10.0.2.2:8000' }}
