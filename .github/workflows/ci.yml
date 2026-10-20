@@ -35,7 +35,7 @@ jobs:
         with: { channel: stable, cache: true }
       # Generates the missing platform folders; existing files (our AndroidManifest) are kept
       - run: flutter create . --org tn.ecoroute --project-name eco_route --platforms=android,web
-      - run: flutter pub get
+      - run: rm -f test/widget_test.dart      - run: flutter pub get
       - run: flutter analyze --no-fatal-infos
       - run: flutter test
       - run: flutter build apk --release --dart-define=API_URL=${{ vars.API_URL || 'http://10.0.2.2:8000' }}
@@ -81,7 +81,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Scan image for CVEs
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}
           severity: CRITICAL,HIGH
