@@ -5,7 +5,7 @@ city 311 systems. Exposing it means any Open311 client or city back-office
 can read and submit Eco-Route reports without custom integration.
 Spec: https://wiki.open311.org/GeoReport_v2
 """
-from fastapi import APIRouter, BackgroundTasks, Depends, Form
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException
 from sqlalchemy.orm import Session
 
 from ..data.sfax import CATEGORIES
@@ -45,6 +45,12 @@ def requests(db: Session = Depends(get_db), status: str | None = None):
 async def post_request(bg: BackgroundTasks, service_code: str = Form(...), lat: float = Form(...),
                        long: float = Form(...), description: str = Form(...), media_url: str | None = Form(None),
                        db: Session = Depends(get_db)):
-    created = await create_report(ReportCreate(category=Category(service_code), description=description,
+    try:
+        category = Category(service_code)
+    except ValueError:
+        # An unknown service_code is a client error, not a crash. The native API
+        # validates this through Pydantic; this path builds the enum by hand.
+        raise HTTPException(400, f"unknown service_code '{service_code}'") from None
+    created = await create_report(ReportCreate(category=category, description=description,
                                                lat=lat, lon=long, photo_url=media_url), bg, db)
     return [{"service_request_id": created.id, "service_notice": created.responsible_service}]

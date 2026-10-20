@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .models import Category, Status
 
@@ -13,6 +13,20 @@ class ReportCreate(BaseModel):
     citizen_urgency: int = Field(50, ge=0, le=100)
     photo_url: str | None = None
     reporter_contact: str | None = None
+
+    @field_validator("description")
+    @classmethod
+    def _clean_description(cls, v: str) -> str:
+        """Strip NUL bytes and blank padding.
+
+        PostgreSQL cannot store NUL in a text column while SQLite accepts it, so
+        without this the test suite passes and production returns 500. Stripping
+        also rejects whitespace-only descriptions, which `min_length` lets through.
+        """
+        v = v.replace("\x00", "").strip()
+        if len(v) < 3:
+            raise ValueError("description must hold at least 3 non-blank characters")
+        return v
 
 
 class ReportOut(BaseModel):

@@ -34,7 +34,7 @@ def roads(q: str | None = None, limit: int = Query(50, le=2000)):
 
 
 @router.get("/critical-edges")
-def critical_edges(top: int = Query(15, le=100)):
+def critical_edges(top: int = Query(15, ge=1, le=100)):
     return get_graph().most_critical_edges(top)
 
 
