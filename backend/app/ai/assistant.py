@@ -196,13 +196,30 @@ def build_tools(db: Session, user_pos: tuple[float, float] | None) -> list[Tool]
     ]
 
 
-async def ask(db: Session, history: list[dict], user_pos: tuple[float, float] | None) -> AgentResult:
+LANGUAGE_NAMES = {"fr": "francais", "en": "anglais", "ar": "arabe"}
+
+
+def language_clause(lang: str | None) -> str:
+    """Pin the reply language when the user picked one in the app's settings.
+
+    Without this the prompt only says 'answer in the user's language', which a
+    small model reads off the question rather than off the chosen setting.
+    """
+    name = LANGUAGE_NAMES.get((lang or "").strip().lower())
+    if not name:
+        return ""
+    return (f"\nL'utilisateur a choisi la langue: {name}. Reponds UNIQUEMENT en {name}, "
+            "quelle que soit la langue de sa question.")
+
+
+async def ask(db: Session, history: list[dict], user_pos: tuple[float, float] | None,
+              lang: str | None = None) -> AgentResult:
     llm = LLM()
     tools = build_tools(db, user_pos)
     if llm.enabled:
         try:
             ctx = f"\nPosition de l'utilisateur : {user_pos}." if user_pos else ""
-            return await llm.run_agent(SYSTEM_PROMPT + ctx, history, tools)
+            return await llm.run_agent(SYSTEM_PROMPT + ctx + language_clause(lang), history, tools)
         except Exception as e:  # noqa: BLE001
             fallback = await _rule_assistant(history, tools)
             fallback.text = f"(IA indisponible : {type(e).__name__}) " + fallback.text

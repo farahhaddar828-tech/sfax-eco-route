@@ -62,3 +62,24 @@ def test_critical_edges_still_honours_a_valid_top(client):
     r = client.get("/api/v1/graph/critical-edges?top=3")
     assert r.status_code == 200
     assert len(r.json()) <= 3
+
+
+def test_language_clause_pins_the_chosen_language():
+    from app.ai.assistant import language_clause
+
+    assert "arabe" in language_clause("ar")
+    assert "anglais" in language_clause("en")
+    assert "UNIQUEMENT" in language_clause("fr")
+
+
+def test_language_clause_is_empty_when_nothing_is_chosen():
+    from app.ai.assistant import language_clause
+
+    for value in (None, "", "   ", "klingon"):
+        assert language_clause(value) == ""
+
+
+def test_chat_accepts_a_language(client):
+    r = client.post("/api/v1/assistant/chat",
+                    json={"messages": [{"role": "user", "content": "bonjour"}], "lang": "ar"})
+    assert r.status_code == 200, r.text

@@ -88,6 +88,9 @@ class ChatRequest(BaseModel):
     messages: list[ChatMessage]
     lat: float | None = None
     lon: float | None = None
+    # UI language chosen in Settings: pins the reply language instead of letting
+    # the model guess from the question.
+    lang: str | None = Field(None, max_length=8)
 
 
 class TriageRequest(BaseModel):

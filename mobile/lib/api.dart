@@ -9,7 +9,15 @@ import 'models.dart';
 
 /// Backend URL, set at build time:
 ///   flutter run --dart-define=API_URL=http://10.0.2.2:8000   (Android emulator -> host)
-const apiUrl = String.fromEnvironment('API_URL', defaultValue: 'http://10.0.2.2:8000');
+const _buildTimeApiUrl = String.fromEnvironment('API_URL', defaultValue: 'http://10.0.2.2:8000');
+
+/// Base URL actually used for requests. Settings can override the build-time
+/// value, so a change of the server's IP no longer means rebuilding the APK.
+String apiUrl = _buildTimeApiUrl;
+
+/// Pass null or an empty string to fall back to the build-time URL.
+void setApiBase(String? url) =>
+    apiUrl = (url == null || url.isEmpty) ? _buildTimeApiUrl : url;
 
 class ApiException implements Exception {
   ApiException(this.message);
@@ -99,10 +107,14 @@ class Api {
       }) as Map<String, dynamic>;
 
   // --------------------------------------------------------------- assistant
-  Future<Map<String, dynamic>> chat(List<Map<String, String>> messages, LatLng? pos) async =>
+  /// [lang] is the language chosen in Settings: the backend pins the assistant's
+  /// reply to it rather than inferring it from the question.
+  Future<Map<String, dynamic>> chat(List<Map<String, String>> messages, LatLng? pos,
+          {String? lang}) async =>
       await _send('POST', '/api/v1/assistant/chat', {
         'messages': messages,
         if (pos != null) 'lat': pos.latitude,
         if (pos != null) 'lon': pos.longitude,
+        if (lang != null) 'lang': lang,
       }) as Map<String, dynamic>;
 }

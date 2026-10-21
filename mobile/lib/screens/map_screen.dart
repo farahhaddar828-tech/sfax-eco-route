@@ -3,8 +3,10 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../api.dart';
+import '../i18n.dart';
 import '../location.dart';
 import '../models.dart';
+import 'settings_screen.dart';
 
 enum MapMode { browse, route, closure }
 
@@ -80,8 +82,16 @@ class MapScreenState extends State<MapScreen> {
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sfax Eco-Route'),
-        actions: [IconButton(onPressed: refresh, icon: const Icon(Icons.refresh), tooltip: 'Actualiser')],
+        title: Text(t('app.title')),
+        actions: [
+          IconButton(onPressed: refresh, icon: const Icon(Icons.refresh), tooltip: t('action.refresh')),
+          IconButton(
+            onPressed: () => Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: t('settings.title'),
+          ),
+        ],
       ),
       body: Stack(children: [
         FlutterMap(

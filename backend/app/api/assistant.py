@@ -13,7 +13,7 @@ router = APIRouter(prefix="/assistant", tags=["ai assistant"])
 @router.post("/chat")
 async def chat(body: ChatRequest, db: Session = Depends(get_db)):
     pos = (body.lat, body.lon) if body.lat is not None and body.lon is not None else None
-    res = await assistant.ask(db, [m.model_dump() for m in body.messages[-12:]], pos)
+    res = await assistant.ask(db, [m.model_dump() for m in body.messages[-12:]], pos, body.lang)
     ASSISTANT_CALLS.labels(provider=res.provider).inc()
     draft = next((t["args"] for t in res.tool_trace if t["tool"] == "draft_report"), None)
     return {"reply": res.text, "tools_used": [t["tool"] for t in res.tool_trace],

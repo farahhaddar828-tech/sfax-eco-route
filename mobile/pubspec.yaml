@@ -9,12 +9,15 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
   http: ^1.2.2
   http_parser: ^4.0.2
   geolocator: ^13.0.1
   image_picker: ^1.1.2
+  shared_preferences: ^2.3.2
 
 dev_dependencies:
   flutter_test:

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../api.dart';
+import '../settings.dart';
 import '../location.dart';
 import '../models.dart';
 
@@ -49,7 +50,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
     _toBottom();
     try {
       final history = [for (final m in _msgs) {'role': m.role, 'content': m.text}];
-      final r = await Api.instance.chat(history, _pos);
+      final r = await Api.instance.chat(history, _pos, lang: Settings.instance.language);
       final draft = r['report_draft'] as Map<String, dynamic>?;
       setState(() => _msgs.add(_Msg('assistant', r['reply'] ?? '',
           draft: draft == null ? null : ReportDraft.fromJson(draft),

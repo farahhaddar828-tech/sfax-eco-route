@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'i18n.dart';
 import 'models.dart';
 import 'screens/assistant_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/map_screen.dart';
 import 'screens/report_screen.dart';
+import 'settings.dart';
 
-void main() => runApp(const EcoRouteApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Settings.instance.load();
+  runApp(const EcoRouteApp());
+}
 
 const brandGreen = Color(0xFF567D3A);
 
@@ -27,12 +34,25 @@ class EcoRouteApp extends StatelessWidget {
       );
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
-        title: 'Sfax Eco-Route',
-        debugShowCheckedModeBanner: false,
-        theme: _theme(Brightness.light),
-        darkTheme: _theme(Brightness.dark),
-        home: const Shell(),
+  Widget build(BuildContext context) => AnimatedBuilder(
+        // Rebuild the whole app when the language or theme changes. Setting
+        // `locale` is what flips Arabic to a right-to-left layout.
+        animation: Settings.instance,
+        builder: (_, __) => MaterialApp(
+          title: t('app.title'),
+          debugShowCheckedModeBanner: false,
+          theme: _theme(Brightness.light),
+          darkTheme: _theme(Brightness.dark),
+          themeMode: Settings.instance.themeMode,
+          locale: Settings.instance.locale,
+          supportedLocales: const [Locale('fr'), Locale('en'), Locale('ar')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: const Shell(),
+        ),
       );
 }
 
@@ -71,17 +91,22 @@ class _ShellState extends State<Shell> {
           : FloatingActionButton.extended(
               onPressed: openReport,
               icon: const Icon(Icons.add_location_alt_outlined),
-              label: const Text('Signaler'),
+              label: Text(t('action.report')),
             ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.map_outlined), selectedIcon: Icon(Icons.map), label: 'Carte'),
+        destinations: [
           NavigationDestination(
-              icon: Icon(Icons.insights_outlined), selectedIcon: Icon(Icons.insights), label: 'Tableau de bord'),
+              icon: const Icon(Icons.map_outlined), selectedIcon: const Icon(Icons.map), label: t('tab.map')),
           NavigationDestination(
-              icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'Assistant'),
+              icon: const Icon(Icons.insights_outlined),
+              selectedIcon: const Icon(Icons.insights),
+              label: t('tab.dashboard')),
+          NavigationDestination(
+              icon: const Icon(Icons.support_agent_outlined),
+              selectedIcon: const Icon(Icons.support_agent),
+              label: t('tab.assistant')),
         ],
       ),
     );
