@@ -11,7 +11,13 @@ import 'settings.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Settings.instance.load();
+  // Never let settings block startup: if the stored preferences can't be read,
+  // the app must still open on its defaults rather than hang on the splash screen.
+  try {
+    await Settings.instance.load();
+  } catch (_) {
+    // defaults are already set on the Settings instance
+  }
   runApp(const EcoRouteApp());
 }
 
