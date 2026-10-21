@@ -6,6 +6,14 @@ Citizens report problems (waste, potholes, broken lights, flooding…). The plat
 > v1 (2025) was an Android Studio app: a form with 5 categories, 8 hard-coded zones and a counter dashboard.
 > v2 is a full platform: Flutter app · FastAPI · graph theory on the complete OSM road network · engineering decision layer · multi-LLM agent · n8n automation · Docker/Kubernetes/Terraform/CI/CD · Prometheus/Grafana.
 
+**Status:** working prototype that runs locally. Not deployed and not used by real citizens yet. Built as a personal project and project report at ISIMSF (Licence Appliquée Big Data, 2025–2026).
+
+<!-- Add screenshots, then remove the comment markers on the lines below:
+| Map | Report | Dashboard | Assistant |
+|---|---|---|---|
+| ![Map](docs/screenshots/map.png) | ![Report](docs/screenshots/report.png) | ![Dashboard](docs/screenshots/dashboard.png) | ![Assistant](docs/screenshots/assistant.png) |
+-->
+
 ---
 
 ## Architecture
@@ -73,7 +81,7 @@ The assistant is a **tool-using agent**, grounded in real data instead of guessi
 It answers in French, Tunisian darija or English. With `none`, a rule-based fallback still gives safety steps and a draft — the app never depends on a paid key.
 
 ### 5. n8n automation — `n8n/workflows/`
-- **Report intake:** webhook → branded HTML email to **your.email@example.com** (priority badge, danger banner, AI summary, responsible service, map link) → optional Telegram alert for critical reports.
+- **Report intake:** webhook → branded HTML email to the city inbox you configure in the workflow (priority badge, danger banner, AI summary, responsible service, map link) → optional Telegram alert for critical reports.
 - **Daily SLA digest (08:00 Africa/Tunis):** pulls the dashboard + overdue reports from the API and emails a summary.
 
 The backend only emits events; routing rules live in n8n and can change without a deploy. If n8n is down, the backend falls back to direct SMTP.
@@ -139,6 +147,7 @@ kubectl apply -k ../k8s
 ```
 For push-to-deploy, add the `KUBECONFIG_B64` secret and set the repo variable `DEPLOY_ENABLED=true`.
 Cost: a t3.medium in eu-west-3 is roughly $30/month if left running — `terraform destroy` after demos; the budget alert warns you.
+The AWS deployment is provided as infrastructure code and has not been run as a public service.
 
 ---
 
@@ -163,8 +172,30 @@ Cost: a t3.medium in eu-west-3 is roughly $30/month if left running — `terrafo
 - **Waze**: routes around hazards for drivers. Eco-Route does the same with *civic* hazards and gives the city the inverse view (which closures hurt the network most).
 - None of them ship a safety-first AI assistant or a crew-routing optimiser in the citizen app.
 
+## Security
+**In place**
+- Containers run as a non-root user with a read-only root filesystem; Kubernetes probes and a pod disruption budget.
+- Terraform security group restricts SSH and API access to the owner's IP; IMDSv2 enforced; encrypted volumes.
+- CI scans the built image for known vulnerabilities (Trivy) before deployment.
+- Secrets come from environment variables and Kubernetes secrets, never from the repository (`.env.example` only).
+- User text is escaped before it is placed in the n8n email template.
+- The AI assistant cannot act on its own: it only *drafts* a report, which the citizen must confirm in the app. Safety steps come from a verified protocol list, not from generated text.
+
+**Not yet done (planned hardening)**
+- Citizen accounts, authentication and role-based access (for example, only a service role may change a report's status).
+- Rate limiting and abuse protection on report creation, upvotes and photo upload.
+- Strict validation of uploaded files and removal of photo metadata (EXIF).
+- Systematic tests for prompt injection against the assistant, and a full security test plan (OWASP Top 10 mapping, fuzzing the API).
+
+## Limitations
+- The priority weights (0.30 / 0.20 / 0.25 / 0.15 / 0.10) are set by hand from reasoning about the problem. They are not calibrated or validated against real municipal data.
+- The AI features are an integration layer over existing language models (plus rule-based fallbacks). No model is trained in this repository.
+- Duplicate detection uses distance and category only (60 m, same category); it does not yet compare photos or text.
+- Tested on development data; no real-world usage or user study yet.
+
 ## Roadmap
-PostGIS (`ST_ClusterDBSCAN`, spatial indexes) · Alembic migrations · photo classification (vision model) · citizen accounts + push notifications on status change · public open-data export · Arabic UI.
+PostGIS (`ST_ClusterDBSCAN`, spatial indexes) · Alembic migrations · citizen accounts and push notifications on status change · public open-data export · the security items above ·
+**Research direction:** automatic validation of reports from photo and multilingual text (Tunisian Arabic, French, English): relevance, category, severity and duplicate detection, with a labelled Tunisian dataset and a measured evaluation · full right-to-left review of the Arabic interface.
 
 ## Tests
 `backend/tests`: graph algorithms (bridges, detours, eco-route, TSP), scoring model, duplicate merge, DBSCAN, both LLM tool-calling protocols (mocked), full API flow, Open311, metrics — 27 tests. `mobile/test`: model parsing.
