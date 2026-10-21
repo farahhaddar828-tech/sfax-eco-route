@@ -28,17 +28,27 @@ class Settings extends ChangeNotifier {
 
   SharedPreferences? _prefs;
 
+  /// Reads stored settings and tells the app to rebuild.
+  ///
+  /// Called *after* `runApp`, never before: if device storage is slow or
+  /// unavailable, the app must still start on its defaults rather than sit on
+  /// the splash screen forever. Swallows its own errors for the same reason.
   Future<void> load() async {
-    _prefs = await SharedPreferences.getInstance();
-    language = _prefs?.getString(_kLang) ?? 'fr';
-    final t = _prefs?.getString(_kTheme);
-    themeMode = t == 'light'
-        ? ThemeMode.light
-        : t == 'dark'
-            ? ThemeMode.dark
-            : ThemeMode.system;
-    serverUrl = _prefs?.getString(_kServer) ?? '';
-    applyServerUrl();
+    try {
+      _prefs = await SharedPreferences.getInstance();
+      language = _prefs?.getString(_kLang) ?? 'fr';
+      final t = _prefs?.getString(_kTheme);
+      themeMode = t == 'light'
+          ? ThemeMode.light
+          : t == 'dark'
+              ? ThemeMode.dark
+              : ThemeMode.system;
+      serverUrl = _prefs?.getString(_kServer) ?? '';
+      applyServerUrl();
+      notifyListeners();
+    } catch (_) {
+      // Keep the defaults already set on the instance.
+    }
   }
 
   Locale get locale => Locale(language);

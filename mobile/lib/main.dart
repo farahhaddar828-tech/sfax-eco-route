@@ -9,16 +9,13 @@ import 'screens/map_screen.dart';
 import 'screens/report_screen.dart';
 import 'settings.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  // Never let settings block startup: if the stored preferences can't be read,
-  // the app must still open on its defaults rather than hang on the splash screen.
-  try {
-    await Settings.instance.load();
-  } catch (_) {
-    // defaults are already set on the Settings instance
-  }
   runApp(const EcoRouteApp());
+  // Deliberately after runApp and deliberately not awaited: reading stored
+  // settings must never be able to keep the app on the splash screen. The UI
+  // starts on defaults and rebuilds once the stored values arrive.
+  Settings.instance.load();
 }
 
 const brandGreen = Color(0xFF567D3A);
