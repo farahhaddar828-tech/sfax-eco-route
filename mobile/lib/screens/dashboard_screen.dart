@@ -82,7 +82,7 @@ class DashboardScreenState extends State<DashboardScreen> {
                       leading: CircleAvatar(
                           backgroundColor: priorityColor(h['mean_priority'] >= 55 ? 'high' : 'medium'),
                           child: Text('${h['count']}', style: const TextStyle(color: Colors.white))),
-                      title: Text(h['zone']),
+                      title: Text(bidi(h['zone'])),
                       subtitle: Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Wrap(spacing: 12, children: [
@@ -100,7 +100,7 @@ class DashboardScreenState extends State<DashboardScreen> {
                 _section(Icons.route_outlined, t('dash.roadhealth'), [
                   if (_health.isEmpty) Text(t('dash.roadhealth.empty')),
                   for (final r in _health.take(8))
-                    _bar("${r['road']} · ${r['open_issues']} ${t('dash.issues.short')}",
+                    _bar("${bidi(r['road'])} · ${r['open_issues']} ${t('dash.issues.short')}",
                         (r['health_index'] as num).round(), 100,
                         color: (r['health_index'] as num) < 50 ? priorityColor('critical') : priorityColor('low')),
                 ]),
@@ -110,7 +110,7 @@ class DashboardScreenState extends State<DashboardScreen> {
                       ListTile(
                         contentPadding: EdgeInsets.zero,
                         leading: Icon(catIcon(s['category']), color: priorityColor('critical')),
-                        title: Text(s['road'] ?? ''),
+                        title: Text(bidi(s['road'] ?? '')),
                         subtitle: Text(s['service']),
                         trailing: Text('+${(s['remaining_hours'] as num).abs().round()} h',
                             style: TextStyle(color: priorityColor('critical'))),

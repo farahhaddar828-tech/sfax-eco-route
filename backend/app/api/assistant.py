@@ -22,7 +22,7 @@ async def chat(body: ChatRequest, db: Session = Depends(get_db)):
 
 @router.post("/triage")
 async def triage(body: TriageRequest):
-    return await assistant.triage(body.text)
+    return await assistant.triage(body.text, lang=body.lang)
 
 
 @router.get("/provider")

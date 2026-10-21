@@ -85,3 +85,21 @@ class Settings extends ChangeNotifier {
     notifyListeners();
   }
 }
+
+/// Rebuilds [builder] whenever a setting changes.
+///
+/// `t()` reads the language from this singleton rather than from an
+/// InheritedWidget, so nothing in the widget tree *depends* on the language and
+/// nothing rebuilds on its own when it changes. Rebuilding MaterialApp is not
+/// enough either: a route's content is built once and then cached by the
+/// Navigator, so a rebuild above it never reaches inside. Every screen that can
+/// be on-screen while the language changes therefore has to listen for itself.
+class SettingsListener extends StatelessWidget {
+  const SettingsListener({super.key, required this.builder});
+
+  final WidgetBuilder builder;
+
+  @override
+  Widget build(BuildContext context) =>
+      AnimatedBuilder(animation: Settings.instance, builder: (c, _) => builder(c));
+}

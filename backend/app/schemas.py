@@ -95,3 +95,4 @@ class ChatRequest(BaseModel):
 
 class TriageRequest(BaseModel):
     text: str
+    lang: str | None = Field(None, max_length=8)

@@ -88,19 +88,27 @@ def rule_triage(text: str) -> dict:
     }
 
 
-async def triage(text: str, llm: LLM | None = None) -> dict:
-    """Classify a free-text description. LLM if available, rules otherwise (and on any failure)."""
+async def triage(text: str, llm: LLM | None = None, lang: str | None = None) -> dict:
+    """Classify a free-text description. LLM if available, rules otherwise (and on any failure).
+
+    ``lang`` is the language the app is being read in. The summary is shown
+    straight back to the citizen, so it has to be in that language rather than
+    in whichever language the prompt happens to be written in. The rule-based
+    fallback echoes the citizen's own words, so it needs no translation.
+    """
     llm = llm or LLM()
     if not llm.enabled or len(text.strip()) < 8:
         return rule_triage(text)
     cats = ", ".join(f"{k} ({v.label_fr})" for k, v in CATEGORIES.items())
+    summary_lang = LANGUAGE_NAMES.get((lang or "").strip().lower(), "francais")
     try:
         out = await llm.complete_json(
             "Tu tries des signalements urbains à Sfax (Tunisie). Le texte peut être en français, "
             "en arabe tunisien (darija, y compris en lettres latines) ou en anglais.",
             f"Catégories possibles: {cats}.\nTexte: «{text}»\n"
             'Réponds: {"category": "<clé>", "suggested_urgency": 0-100, '
-            '"summary": "<résumé factuel en français, 1 phrase>", "danger_to_people": true|false}',
+            f'"summary": "<résumé factuel en {summary_lang}, 1 phrase>", '
+            '"danger_to_people": true|false}',
         )
         if out.get("category") not in CATEGORIES:
             out["category"] = "other"

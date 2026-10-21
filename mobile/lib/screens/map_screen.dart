@@ -249,7 +249,7 @@ class MapScreenState extends State<MapScreen> {
           if ((e['road_names'] as List).isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Text("${t('map.route.via')} : ${(e['road_names'] as List).take(4).join(' → ')}",
+              child: Text("${t('map.route.via')} : ${(e['road_names'] as List).map(bidi).join(' → ')}",
                   style: Theme.of(context).textTheme.bodySmall),
             ),
         ]),
@@ -264,7 +264,7 @@ class MapScreenState extends State<MapScreen> {
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text(tp('map.closure.title', {'road': '${edge['name']}'}),
+          Text(tp('map.closure.title', {'road': bidi(edge['name'])}),
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 6),
           Text('${t('map.closure.criticality')} : ${(edge['criticality'] * 100).round()} %'
@@ -295,7 +295,7 @@ class MapScreenState extends State<MapScreen> {
             const SizedBox(width: 10),
             Expanded(child: Text(catLabel(cat.key), style: Theme.of(context).textTheme.titleLarge)),
           ]),
-          Text('${r.roadName} · ${r.zone}'),
+          Text('${bidi(r.roadName)} · ${bidi(r.zone)}'),
           const SizedBox(height: 8),
           Chip(
             label: Text('${priorityText(r.priorityLabel)} · ${r.priorityScore.round()}/100',

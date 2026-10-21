@@ -88,6 +88,19 @@ void main() {
     expect(s.contains('{road}'), isFalse);
   });
 
+  test('bidi isolates a name without changing its text', () {
+    const name = 'شارع بنزرت';
+    final wrapped = bidi(name);
+    // The isolate characters are invisible, so the name itself must survive
+    // untouched; only the surrounding sentence's layout changes.
+    expect(wrapped.contains(name), isTrue);
+    expect(wrapped.codeUnitAt(0), 0x2068); // First Strong Isolate
+    expect(wrapped.codeUnits.last, 0x2069); // Pop Directional Isolate
+    expect(wrapped.replaceAll('\u2068', '').replaceAll('\u2069', ''), name);
+    // Null and numbers must not crash a label built from backend JSON.
+    expect(bidi(null).contains('null'), isTrue);
+  });
+
   test('priority colours are distinct and an unknown band is safe', () {
     final colours = ['critical', 'high', 'medium', 'low'].map(priorityColor).toSet();
     expect(colours.length, 4);

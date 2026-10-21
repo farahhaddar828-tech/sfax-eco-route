@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import '../api.dart';
 import '../i18n.dart';
 import '../location.dart';
+import '../settings.dart';
 import '../models.dart';
 import 'pick_location.dart';
 
@@ -44,7 +45,7 @@ class _ReportScreenState extends State<ReportScreen> {
     if (_desc.text.trim().length < 5) return;
     setState(() => _triaging = true);
     try {
-      final t = await Api.instance.triage(_desc.text);
+      final t = await Api.instance.triage(_desc.text, lang: Settings.instance.language);
       setState(() {
         _aiHint = t;
         _category ??= t['category'];
@@ -107,9 +108,9 @@ class _ReportScreenState extends State<ReportScreen> {
             Row(children: [
               Icon(catIcon(r['category']), size: 18, color: priorityColor(label)),
               const SizedBox(width: 8),
-              Expanded(child: Text('${catLabel(r['category'])} — ${r['road_name']}')),
+              Expanded(child: Text('${catLabel(r['category'])} — ${bidi(r['road_name'])}')),
             ]),
-            Text('${r['zone']}', style: Theme.of(context).textTheme.bodySmall),
+            Text(bidi(r['zone']), style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 12),
             Text('${t('report.result.priority')} ${priorityText(label)} : ${r['priority_score']}/100',
                 style: TextStyle(fontWeight: FontWeight.bold, color: priorityColor(label))),
@@ -126,7 +127,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 ]),
               ),
             const Divider(height: 20),
-            Text('${t('report.result.service')} : ${r['responsible_service']}'),
+            Text('${t('report.result.service')} : ${bidi(r['responsible_service'])}'),
             Text('${t('report.result.sla')} : ${r['sla_hours']} h'),
             if (cost != null && cost[1] > 0)
               Text('${t('report.result.cost')} : ${cost[0]}–${cost[1]} TND'),

@@ -406,6 +406,19 @@ String tp(String key, Map<String, String> args) {
   return s;
 }
 
+/// Isolate a piece of text whose direction may differ from the sentence it sits
+/// in — an Arabic street name inside a French or English line, for example.
+///
+/// Without this, Unicode's bidirectional algorithm treats the whole string as
+/// one run and lets the Arabic name drag the surrounding words around it, so
+/// `Via : شارع بنزرت` renders with "Via :" pushed to the end of the line. The
+/// First Strong Isolate / Pop Directional Isolate pair (U+2068 / U+2069) tells
+/// the algorithm to lay the name out on its own and leave the sentence alone.
+/// Both characters are invisible, so they are written here as escape sequences:
+/// invisible direction-changing characters in source code make it read
+/// differently to a human than it compiles, which the analyzer rightly warns about.
+String bidi(Object? name) => '\u2068$name\u2069';
+
 /// Localised name of a report category: `catLabel('waste')`.
 String catLabel(String key) => t('cat.$key');
 

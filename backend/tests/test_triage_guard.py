@@ -69,3 +69,31 @@ def test_prompt_carries_the_tunisian_emergency_numbers():
 
 def test_prompt_rules_out_the_french_numbers():
     assert "FAUX en Tunisie" in SYSTEM_PROMPT
+
+
+class RecordingLLM(FakeLLM):
+    """Captures the prompt it is given, so the test can assert on it."""
+
+    def __init__(self, payload: dict) -> None:
+        super().__init__(payload)
+        self.prompts: list[str] = []
+
+    async def complete_json(self, system: str, user: str) -> dict:  # noqa: ARG002
+        self.prompts.append(user)
+        return dict(self._payload)
+
+
+def test_triage_summary_is_asked_for_in_the_app_language():
+    """The summary is shown straight back to the citizen, so it has to be in the
+    language they are reading the app in.
+
+    Regression: the prompt hardcoded "resume factuel en francais", so a report
+    typed in English came back summarised in French however the app was set.
+    An unknown or missing language still falls back to French.
+    """
+    for lang, expected in [("en", "anglais"), ("ar", "arabe"), ("fr", "francais"),
+                           (None, "francais"), ("", "francais"), ("zz", "francais"),
+                           ("EN", "anglais"), (" ar ", "arabe")]:
+        llm = RecordingLLM(MODEL_CRIES_DANGER)
+        asyncio.run(triage("a large pothole in the middle of the road", llm=llm, lang=lang))
+        assert f"en {expected}," in llm.prompts[0], (lang, llm.prompts[0])

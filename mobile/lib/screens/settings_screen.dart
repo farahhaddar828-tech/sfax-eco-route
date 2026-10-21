@@ -30,7 +30,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => SettingsListener(builder: _build);
+
+  Widget _build(BuildContext context) {
     final s = Settings.instance;
     final text = Theme.of(context).textTheme;
     return Scaffold(

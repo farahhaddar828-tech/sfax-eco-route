@@ -86,8 +86,14 @@ class Api {
     return (_decode(r) as Map)['photo_url'] as String;
   }
 
-  Future<Map<String, dynamic>> triage(String text) async =>
-      await _send('POST', '/api/v1/assistant/triage', {'text': text}) as Map<String, dynamic>;
+  /// [lang] pins the language of the returned summary. Without it the backend
+  /// falls back to French, which is why an English or Arabic report used to come
+  /// back summarised in French.
+  Future<Map<String, dynamic>> triage(String text, {String? lang}) async =>
+      await _send('POST', '/api/v1/assistant/triage', {
+        'text': text,
+        if (lang != null) 'lang': lang,
+      }) as Map<String, dynamic>;
 
   // --------------------------------------------------------------- analytics
   Future<Map<String, dynamic>> dashboard() async => await _get('/api/v1/analytics/dashboard') as Map<String, dynamic>;

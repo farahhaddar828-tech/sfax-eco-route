@@ -81,37 +81,44 @@ class _ShellState extends State<Shell> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final pages = [
-      MapScreen(key: _mapKey),
-      DashboardScreen(key: _dashKey),
-      AssistantScreen(onUseDraft: openReport),
-    ];
-    return Scaffold(
-      body: IndexedStack(index: _tab, children: pages),
-      floatingActionButton: _tab == 2
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: openReport,
-              icon: const Icon(Icons.add_location_alt_outlined),
-              label: Text(t('action.report')),
-            ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
-        destinations: [
-          NavigationDestination(
-              icon: const Icon(Icons.map_outlined), selectedIcon: const Icon(Icons.map), label: t('tab.map')),
-          NavigationDestination(
-              icon: const Icon(Icons.insights_outlined),
-              selectedIcon: const Icon(Icons.insights),
-              label: t('tab.dashboard')),
-          NavigationDestination(
-              icon: const Icon(Icons.support_agent_outlined),
-              selectedIcon: const Icon(Icons.support_agent),
-              label: t('tab.assistant')),
-        ],
-      ),
-    );
-  }
+  // The pages are built *inside* the listener, not above it: rebuilding only
+  // the Scaffold would leave MapScreen, DashboardScreen and AssistantScreen
+  // holding their old widget instances, and their own build methods — which is
+  // where most of the translated text lives — would never run again. Their
+  // GlobalKeys mean the State objects, and so the map position and the chat
+  // history, survive the rebuild.
+  @override
+  Widget build(BuildContext context) => SettingsListener(builder: (context) {
+        final pages = [
+          MapScreen(key: _mapKey),
+          DashboardScreen(key: _dashKey),
+          AssistantScreen(onUseDraft: openReport),
+        ];
+        return Scaffold(
+          body: IndexedStack(index: _tab, children: pages),
+          floatingActionButton: _tab == 2
+              ? null
+              : FloatingActionButton.extended(
+                  onPressed: openReport,
+                  icon: const Icon(Icons.add_location_alt_outlined),
+                  label: Text(t('action.report')),
+                ),
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: _tab,
+            onDestinationSelected: (i) => setState(() => _tab = i),
+            destinations: [
+              NavigationDestination(
+                  icon: const Icon(Icons.map_outlined), selectedIcon: const Icon(Icons.map), label: t('tab.map')),
+              NavigationDestination(
+                  icon: const Icon(Icons.insights_outlined),
+                  selectedIcon: const Icon(Icons.insights),
+                  label: t('tab.dashboard')),
+              NavigationDestination(
+                  icon: const Icon(Icons.support_agent_outlined),
+                  selectedIcon: const Icon(Icons.support_agent),
+                  label: t('tab.assistant')),
+            ],
+          ),
+        );
+      });
 }
