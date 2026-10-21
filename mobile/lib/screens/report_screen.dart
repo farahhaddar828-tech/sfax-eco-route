@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../api.dart';
+import '../i18n.dart';
 import '../location.dart';
 import '../models.dart';
 import 'pick_location.dart';
@@ -85,7 +86,7 @@ class _ReportScreenState extends State<ReportScreen> {
       await _showResult(res);
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Échec : $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${t('report.failed')} : $e')));
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -95,32 +96,29 @@ class _ReportScreenState extends State<ReportScreen> {
     final label = r['priority_label'] as String;
     final breakdown = (r['priority_breakdown'] as Map?) ?? {};
     final cost = r['cost_estimate_tnd'] as List?;
-    const names = {
-      'severity': 'Gravité du type',
-      'citizen': 'Votre urgence',
-      'criticality': 'Importance de la route',
-      'crowd': 'Confirmations',
-      'age': 'Ancienneté',
-    };
     return showDialog(
       context: context,
       builder: (_) => AlertDialog(
         icon: Icon(r['merged_into_existing'] == true ? Icons.group_add : Icons.check_circle,
             color: priorityColor(label), size: 40),
-        title: Text(r['merged_into_existing'] == true ? 'Déjà signalé — confirmation ajoutée' : 'Signalement envoyé'),
+        title: Text(t(r['merged_into_existing'] == true ? 'report.result.merged' : 'report.result.sent')),
         content: SingleChildScrollView(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text('${categoryOf(r['category']).emoji} ${categoryOf(r['category']).label} — ${r['road_name']}'),
+            Row(children: [
+              Icon(catIcon(r['category']), size: 18, color: priorityColor(label)),
+              const SizedBox(width: 8),
+              Expanded(child: Text('${catLabel(r['category'])} — ${r['road_name']}')),
+            ]),
             Text('${r['zone']}', style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 12),
-            Text('Priorité ${priorityFr(label)} : ${r['priority_score']}/100',
+            Text('${t('report.result.priority')} ${priorityText(label)} : ${r['priority_score']}/100',
                 style: TextStyle(fontWeight: FontWeight.bold, color: priorityColor(label))),
             const SizedBox(height: 6),
             for (final e in breakdown.entries)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 2),
                 child: Row(children: [
-                  Expanded(child: Text(names[e.key] ?? e.key)),
+                  Expanded(child: Text(t('factor.${e.key}'))),
                   SizedBox(
                       width: 90,
                       child: LinearProgressIndicator(value: (e.value['value'] as num).toDouble(), minHeight: 6)),
@@ -128,12 +126,13 @@ class _ReportScreenState extends State<ReportScreen> {
                 ]),
               ),
             const Divider(height: 20),
-            Text('Transmis à : ${r['responsible_service']}'),
-            Text('Délai cible : ${r['sla_hours']} h'),
-            if (cost != null && cost[1] > 0) Text('Coût estimé : ${cost[0]}–${cost[1]} TND'),
+            Text('${t('report.result.service')} : ${r['responsible_service']}'),
+            Text('${t('report.result.sla')} : ${r['sla_hours']} h'),
+            if (cost != null && cost[1] > 0)
+              Text('${t('report.result.cost')} : ${cost[0]}–${cost[1]} TND'),
           ]),
         ),
-        actions: [FilledButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+        actions: [FilledButton(onPressed: () => Navigator.pop(context), child: Text(t('action.ok')))],
       ),
     );
   }
@@ -142,18 +141,18 @@ class _ReportScreenState extends State<ReportScreen> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Nouveau signalement')),
+      appBar: AppBar(title: Text(t('report.title'))),
       body: ListView(padding: const EdgeInsets.all(16), children: [
-        Text('Décrivez le problème', style: Theme.of(context).textTheme.titleSmall),
+        Text(t('report.describe'), style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
         TextField(
           controller: _desc,
           minLines: 3,
           maxLines: 6,
           decoration: InputDecoration(
-            hintText: 'Ex : gros trou au milieu de la route, dangereux pour les motos…\n(français, darija ou anglais)',
+            hintText: t('report.hint'),
             suffixIcon: IconButton(
-              tooltip: "Analyser avec l'IA",
+              tooltip: t('report.analyze'),
               onPressed: _triaging ? null : _askAi,
               icon: _triaging
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
@@ -171,29 +170,34 @@ class _ReportScreenState extends State<ReportScreen> {
                 leading: Icon(_aiHint!['danger_to_people'] == true ? Icons.warning_amber : Icons.auto_awesome),
                 title: Text(_aiHint!['summary'] ?? ''),
                 subtitle: Text(_aiHint!['danger_to_people'] == true
-                    ? 'Danger possible pour les personnes : si urgent, appelez le 198 (Protection civile) ou le 190 (SAMU).'
-                    : 'Catégorie suggérée : ${categoryOf(_aiHint!['category']).label}'),
+                    ? t('report.ai.danger')
+                    : "${t('report.ai.suggested')} : ${catLabel(_aiHint!['category'])}"),
               ),
             ),
           ),
         const SizedBox(height: 20),
-        Text('Type de problème', style: Theme.of(context).textTheme.titleSmall),
+        Text(t('report.type'), style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
+        // The icon goes in the chip's avatar slot rather than into the label
+        // string: Material then sizes and tints it with the chip's selected
+        // state, and it cannot be mistaken for part of the text.
         Wrap(spacing: 8, runSpacing: 8, children: [
           ChoiceChip(
-            label: const Text('✨ Auto (IA)'),
+            avatar: const Icon(Icons.auto_awesome, size: 18),
+            label: Text(t('report.auto')),
             selected: _category == null,
             onSelected: (_) => setState(() => _category = null),
           ),
           for (final c in categories)
             ChoiceChip(
-              label: Text('${c.emoji} ${c.label}'),
+              avatar: Icon(c.icon, size: 18),
+              label: Text(catLabel(c.key)),
               selected: _category == c.key,
               onSelected: (_) => setState(() => _category = c.key),
             ),
         ]),
         const SizedBox(height: 20),
-        Text('Emplacement', style: Theme.of(context).textTheme.titleSmall),
+        Text(t('report.location'), style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
         InkWell(
           borderRadius: BorderRadius.circular(16),
@@ -236,7 +240,7 @@ class _ReportScreenState extends State<ReportScreen> {
                         child: FilledButton.tonalIcon(
                           onPressed: _pickLocation,
                           icon: const Icon(Icons.search),
-                          label: const Text("Rechercher ou ajuster"),
+                          label: Text(t('report.location.search')),
                         ),
                       ),
                     ]),
@@ -245,7 +249,7 @@ class _ReportScreenState extends State<ReportScreen> {
         ),
         const SizedBox(height: 20),
         Row(children: [
-          Text("Niveau d'urgence", style: Theme.of(context).textTheme.titleSmall),
+          Text(t('report.urgency'), style: Theme.of(context).textTheme.titleSmall),
           const Spacer(),
           Text('${_urgency.round()} / 100', style: TextStyle(color: cs.primary, fontWeight: FontWeight.bold)),
         ]),
@@ -267,13 +271,13 @@ class _ReportScreenState extends State<ReportScreen> {
                 child: OutlinedButton.icon(
                     onPressed: () => _pickPhoto(ImageSource.camera),
                     icon: const Icon(Icons.photo_camera_outlined),
-                    label: const Text('Photo'))),
+                    label: Text(t('report.photo')))),
             const SizedBox(width: 12),
             Expanded(
                 child: OutlinedButton.icon(
                     onPressed: () => _pickPhoto(ImageSource.gallery),
                     icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text('Galerie'))),
+                    label: Text(t('report.gallery')))),
           ]),
         const SizedBox(height: 24),
         FilledButton.icon(
@@ -282,7 +286,7 @@ class _ReportScreenState extends State<ReportScreen> {
           icon: _sending
               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
               : const Icon(Icons.send),
-          label: const Text('Envoyer le signalement'),
+          label: Text(t('report.submit')),
         ),
       ]),
     );

@@ -20,3 +20,7 @@ mobile/android/local.properties
 docker-compose.override.yml
 
 apply_i18n.py
+
+# one-off patch scripts, not part of the project
+apply_design.py
+fix_tests.py

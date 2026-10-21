@@ -40,7 +40,7 @@ class MapScreenState extends State<MapScreen> {
       final h = await Api.instance.hotspots();
       if (mounted) setState(() => (_reports = r, _hotspots = h, _error = null));
     } catch (e) {
-      if (mounted) setState(() => _error = 'Serveur injoignable ($e)');
+      if (mounted) setState(() => _error = '${t('map.error.server')} ($e)');
     }
   }
 
@@ -139,7 +139,9 @@ class MapScreenState extends State<MapScreen> {
                         boxShadow: const [BoxShadow(blurRadius: 4, color: Colors.black26)],
                       ),
                       alignment: Alignment.center,
-                      child: Text(categoryOf(r.category).emoji, style: const TextStyle(fontSize: 18)),
+                      // Colour says how urgent, shape says what kind. Both read
+                      // at a glance without a legend.
+                      child: Icon(catIcon(r.category), size: 19, color: Colors.white),
                     ),
                   ),
                 ),
@@ -157,10 +159,17 @@ class MapScreenState extends State<MapScreen> {
           right: 12,
           child: SegmentedButton<MapMode>(
             style: SegmentedButton.styleFrom(backgroundColor: cs.surface),
-            segments: const [
-              ButtonSegment(value: MapMode.browse, icon: Icon(Icons.place_outlined), label: Text('Signalements')),
-              ButtonSegment(value: MapMode.route, icon: Icon(Icons.alt_route), label: Text('Itinéraire')),
-              ButtonSegment(value: MapMode.closure, icon: Icon(Icons.block), label: Text('Fermeture')),
+            // Not `const`: these labels have to be rebuilt when the language
+            // changes, and a const list freezes them at their first value.
+            segments: [
+              ButtonSegment(
+                  value: MapMode.browse,
+                  icon: const Icon(Icons.place_outlined),
+                  label: Text(t('map.mode.reports'))),
+              ButtonSegment(
+                  value: MapMode.route, icon: const Icon(Icons.alt_route), label: Text(t('map.mode.route'))),
+              ButtonSegment(
+                  value: MapMode.closure, icon: const Icon(Icons.block), label: Text(t('map.mode.closure'))),
             ],
             selected: {_mode},
             onSelectionChanged: (s) => setState(() {
@@ -174,10 +183,9 @@ class MapScreenState extends State<MapScreen> {
         if (_error != null) Positioned(top: 70, left: 12, right: 12, child: _banner(_error!, cs.errorContainer)),
         if (_mode == MapMode.route && _route == null)
           Positioned(top: 70, left: 12, right: 12,
-              child: _banner(_from == null ? 'Touchez le point de départ' : "Touchez la destination", cs.surface)),
+              child: _banner(t(_from == null ? 'map.hint.origin' : 'map.hint.destination'), cs.surface)),
         if (_mode == MapMode.closure && _closure == null)
-          Positioned(top: 70, left: 12, right: 12,
-              child: _banner('Touchez une route : que se passe-t-il si elle est bloquée ?', cs.surface)),
+          Positioned(top: 70, left: 12, right: 12, child: _banner(t('map.hint.closure'), cs.surface)),
         if (_route != null) Positioned(left: 12, right: 12, bottom: 90, child: _routeCard()),
         if (_closure != null) Positioned(left: 12, right: 12, bottom: 90, child: _closureCard()),
       ]),
@@ -196,21 +204,54 @@ class MapScreenState extends State<MapScreen> {
 
   String _min(num s) => '${(s / 60).toStringAsFixed(1)} min';
 
+  /// A legend line whose swatch is the colour of the line it describes, so the
+  /// card and the map read as one thing.
+  Widget _legend(Color color, String label, String detail) => Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Padding(
+            padding: const EdgeInsetsDirectional.only(end: 8, top: 5),
+            child: Container(
+                width: 14, height: 4, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+          ),
+          Expanded(
+            child: Text.rich(TextSpan(children: [
+              TextSpan(text: '$label : ', style: const TextStyle(fontWeight: FontWeight.w600)),
+              TextSpan(text: detail),
+            ])),
+          ),
+        ]),
+      );
+
   Widget _routeCard() {
     final f = _route!['fastest'], e = _route!['eco_route'];
     final avoided = _route!['hazards_avoided'];
+    final cs = Theme.of(context).colorScheme;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text('Eco-Route', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 6),
-          Text('🟢 Itinéraire sûr : ${_min(e['time_s'])}, ${(e['length_m'] / 1000).toStringAsFixed(1)} km, '
-              '${e['hazards_on_route']} problème(s), ${e['co2_g'].round()} g CO₂'),
-          Text('⚪ Plus rapide : ${_min(f['time_s'])}, ${f['hazards_on_route']} problème(s) signalé(s)'),
-          if (avoided > 0) Text('→ $avoided problème(s) évité(s) pour +${_min(_route!['extra_time_s'])}'),
+          Text(t('map.route.title'), style: Theme.of(context).textTheme.titleMedium),
+          _legend(
+              cs.primary,
+              t('map.route.safe'),
+              '${_min(e['time_s'])}, ${(e['length_m'] / 1000).toStringAsFixed(1)} km, '
+                  '${e['hazards_on_route']} ${t('map.route.issues')}, ${e['co2_g'].round()} g CO₂'),
+          _legend(Colors.grey.shade600, t('map.route.fastest'),
+              '${_min(f['time_s'])}, ${f['hazards_on_route']} ${t('map.route.issues')}'),
+          if (avoided > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                  '$avoided ${t('map.route.issues')} ${t('map.route.avoided')} +${_min(_route!['extra_time_s'])}',
+                  style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600)),
+            ),
           if ((e['road_names'] as List).isNotEmpty)
-            Text('Via : ${(e['road_names'] as List).take(4).join(' → ')}', style: Theme.of(context).textTheme.bodySmall),
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text("${t('map.route.via')} : ${(e['road_names'] as List).take(4).join(' → ')}",
+                  style: Theme.of(context).textTheme.bodySmall),
+            ),
         ]),
       ),
     );
@@ -223,14 +264,19 @@ class MapScreenState extends State<MapScreen> {
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text('Si « ${edge['name']} » est bloquée', style: Theme.of(context).textTheme.titleMedium),
+          Text(tp('map.closure.title', {'road': '${edge['name']}'}),
+              style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 6),
-          Text('Criticité : ${(edge['criticality'] * 100).round()} %${edge['is_bridge'] ? ' — aucun itinéraire de secours !' : ''}'),
-          if (cut > 0) Text('$cut intersection(s) isolée(s) du réseau'),
+          Text('${t('map.closure.criticality')} : ${(edge['criticality'] * 100).round()} %'
+              '${edge['is_bridge'] ? " — ${t('map.closure.nobackup')}" : ''}'),
+          if (cut > 0) Text('$cut ${t('map.closure.isolated')}'),
           if (c['detour_extra_m'] != null)
-            Text('Détour : +${(c['detour_extra_m'] / 1000).toStringAsFixed(2)} km / +${_min(c['detour_extra_s'])}'),
-          Text('${c['sampled_trips_affected_pct']} % des trajets simulés touchés, '
-              '+${_min(c['avg_delay_on_affected_s'])} en moyenne'),
+            Text('${t('map.closure.detour')} : +${(c['detour_extra_m'] / 1000).toStringAsFixed(2)} km'
+                ' / +${_min(c['detour_extra_s'])}'),
+          Text(tp('map.closure.trips', {
+            'pct': '${c['sampled_trips_affected_pct']}',
+            'delay': _min(c['avg_delay_on_affected_s']),
+          })),
         ]),
       ),
     );
@@ -244,11 +290,15 @@ class MapScreenState extends State<MapScreen> {
       builder: (_) => Padding(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text('${cat.emoji} ${cat.label}', style: Theme.of(context).textTheme.titleLarge),
+          Row(children: [
+            Icon(cat.icon, color: priorityColor(r.priorityLabel)),
+            const SizedBox(width: 10),
+            Expanded(child: Text(catLabel(cat.key), style: Theme.of(context).textTheme.titleLarge)),
+          ]),
           Text('${r.roadName} · ${r.zone}'),
           const SizedBox(height: 8),
           Chip(
-            label: Text('${priorityFr(r.priorityLabel)} · ${r.priorityScore.round()}/100',
+            label: Text('${priorityText(r.priorityLabel)} · ${r.priorityScore.round()}/100',
                 style: const TextStyle(color: Colors.white)),
             backgroundColor: priorityColor(r.priorityLabel),
           ),
@@ -265,11 +315,11 @@ class MapScreenState extends State<MapScreen> {
             onPressed: () async {
               Navigator.pop(context);
               await Api.instance.upvote(r.id);
-              _snack('Merci ! Votre confirmation augmente la priorité.');
+              _snack(t('map.upvote.thanks'));
               refresh();
             },
             icon: const Icon(Icons.thumb_up_alt_outlined),
-            label: Text('Moi aussi je le vois (${r.upvotes})'),
+            label: Text('${t('map.upvote')} (${r.upvotes})'),
           ),
         ]),
       ),

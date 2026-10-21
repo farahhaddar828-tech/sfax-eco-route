@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
+import '../i18n.dart';
 import '../location.dart';
 
 /// One geocoding hit from Nominatim.
@@ -110,12 +111,12 @@ class _PickLocationScreenState extends State<PickLocationScreen> {
     setState(() => _locating = false);
     if (p == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Position indisponible. Activez le GPS.')),
+        SnackBar(content: Text(t('pick.nolocation'))),
       );
       return;
     }
     _map.move(p, 17);
-    setState(() => _chosenLabel = 'Ma position');
+    setState(() => _chosenLabel = t('pick.mylocation'));
   }
 
   @override
@@ -169,7 +170,7 @@ class _PickLocationScreenState extends State<PickLocationScreen> {
                 onChanged: _onQueryChanged,
                 onSubmitted: (q) => q.trim().length >= 3 ? _search(q.trim()) : null,
                 decoration: InputDecoration(
-                  hintText: 'Rechercher une rue, un quartier...',
+                  hintText: t('pick.search'),
                   prefixIcon: const Icon(Icons.search),
                   suffixIcon: _searching
                       ? const Padding(
@@ -227,7 +228,7 @@ class _PickLocationScreenState extends State<PickLocationScreen> {
           child: FloatingActionButton.small(
             heroTag: 'pick-my-location',
             onPressed: _locating ? null : _useMyLocation,
-            tooltip: 'Ma position',
+            tooltip: t('pick.mylocation'),
             child: _locating
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.my_location),
@@ -248,7 +249,7 @@ class _PickLocationScreenState extends State<PickLocationScreen> {
               child: Row(children: [
                 Expanded(
                   child: Text(
-                    _chosenLabel ?? 'Déplacez la carte sous le repère',
+                    _chosenLabel ?? t('pick.hint'),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodyMedium,
@@ -258,7 +259,7 @@ class _PickLocationScreenState extends State<PickLocationScreen> {
                 FilledButton.icon(
                   onPressed: () => Navigator.of(context).pop(_map.camera.center),
                   icon: const Icon(Icons.check),
-                  label: const Text('Confirmer'),
+                  label: Text(t('pick.confirm')),
                 ),
               ]),
             ),

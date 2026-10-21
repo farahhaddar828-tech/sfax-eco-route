@@ -3,41 +3,48 @@ import 'package:latlong2/latlong.dart';
 
 const sfaxCenter = LatLng(34.7406, 10.7603);
 
+/// A report category: a stable key, and the icon that stands for it.
+///
+/// The label is deliberately *not* stored here — it comes from `catLabel(key)`
+/// in i18n.dart, so the category list carries no language of its own.
+///
+/// Icons rather than emoji: an emoji is drawn by whatever font the device
+/// happens to ship, so it changed shape from phone to phone and was illegible
+/// at marker size. A Material icon is a vector in the app's own font: crisp at
+/// 16 px and it takes the colour it is given.
 class CategoryInfo {
-  const CategoryInfo(this.key, this.label, this.emoji);
+  const CategoryInfo(this.key, this.icon);
   final String key;
-  final String label;
-  final String emoji;
+  final IconData icon;
 }
 
 const categories = <CategoryInfo>[
-  CategoryInfo('waste', 'Déchets', '🗑️'),
-  CategoryInfo('road', 'Routes', '🛣️'),
-  CategoryInfo('lighting', 'Éclairage', '💡'),
-  CategoryInfo('traffic', 'Circulation', '🚦'),
-  CategoryInfo('school', 'Écoles', '🏫'),
-  CategoryInfo('flooding', 'Inondation', '🌊'),
-  CategoryInfo('water', "Fuite d'eau", '🚰'),
-  CategoryInfo('pollution', 'Pollution', '🏭'),
-  CategoryInfo('green', 'Espaces verts', '🌳'),
-  CategoryInfo('other', 'Autre', '📍'),
+  CategoryInfo('waste', Icons.delete_outline),
+  CategoryInfo('road', Icons.edit_road),
+  CategoryInfo('lighting', Icons.lightbulb_outline),
+  CategoryInfo('traffic', Icons.traffic),
+  CategoryInfo('school', Icons.school_outlined),
+  CategoryInfo('flooding', Icons.water_drop_outlined),
+  CategoryInfo('water', Icons.plumbing),
+  CategoryInfo('pollution', Icons.factory),
+  CategoryInfo('green', Icons.park_outlined),
+  CategoryInfo('other', Icons.place_outlined),
 ];
 
 CategoryInfo categoryOf(String key) =>
     categories.firstWhere((c) => c.key == key, orElse: () => categories.last);
 
+/// Shortcut for the icon of a category key.
+IconData catIcon(String key) => categoryOf(key).icon;
+
+/// The one colour dimension in the app. Priority is the thing a reader needs to
+/// judge at a glance, so priority owns colour and nothing else competes for it:
+/// category is carried by icon shape alone.
 Color priorityColor(String label) => switch (label) {
       'critical' => const Color(0xFFB3261E),
       'high' => const Color(0xFFE07B1A),
       'medium' => const Color(0xFFC9A227),
       _ => const Color(0xFF4F7A3A),
-    };
-
-String priorityFr(String label) => switch (label) {
-      'critical' => 'Critique',
-      'high' => 'Élevée',
-      'medium' => 'Moyenne',
-      _ => 'Faible',
     };
 
 class Report {

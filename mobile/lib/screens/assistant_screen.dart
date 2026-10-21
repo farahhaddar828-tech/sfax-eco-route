@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../api.dart';
-import '../settings.dart';
+import '../i18n.dart';
 import '../location.dart';
 import '../models.dart';
+import '../settings.dart';
 
 class AssistantScreen extends StatefulWidget {
   const AssistantScreen({super.key, required this.onUseDraft});
@@ -27,12 +28,9 @@ class _AssistantScreenState extends State<AssistantScreen> {
   bool _thinking = false;
   LatLng? _pos;
 
-  static const _suggestions = [
-    'Un câble électrique est tombé dans ma rue',
-    'La route est inondée, je dois aller au centre-ville',
-    'Le feu est en panne au carrefour, c\'est dangereux ?',
-    'Quels problèmes sont signalés autour de moi ?',
-  ];
+  /// A getter, not a `const` field: the examples have to follow the language,
+  /// and a const list would freeze them at whichever language started the app.
+  List<String> get _suggestions => [t('assistant.s1'), t('assistant.s2'), t('assistant.s3'), t('assistant.s4')];
 
   @override
   void initState() {
@@ -56,7 +54,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
           draft: draft == null ? null : ReportDraft.fromJson(draft),
           tools: List<String>.from(r['tools_used'] ?? const []))));
     } catch (e) {
-      setState(() => _msgs.add(_Msg('assistant', "Je n'arrive pas à joindre le serveur ($e).")));
+      setState(() => _msgs.add(_Msg('assistant', '${t('assistant.unreachable')} ($e).')));
     } finally {
       if (mounted) setState(() => _thinking = false);
       _toBottom();
@@ -74,18 +72,14 @@ class _AssistantScreenState extends State<AssistantScreen> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Assistant Eco-Route')),
+      appBar: AppBar(title: Text(t('assistant.title'))),
       body: Column(children: [
         Expanded(
           child: _msgs.isEmpty
               ? ListView(padding: const EdgeInsets.all(20), children: [
                   Icon(Icons.support_agent, size: 56, color: cs.primary),
                   const SizedBox(height: 12),
-                  const Text(
-                    "Décrivez ce que vous voyez. Je vous dis si c'est dangereux, qui appeler, "
-                    'comment contourner, et je prépare le signalement.',
-                    textAlign: TextAlign.center,
-                  ),
+                  Text(t('assistant.intro'), textAlign: TextAlign.center),
                   const SizedBox(height: 20),
                   for (final s in _suggestions)
                     Padding(
@@ -93,8 +87,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
                       child: ActionChip(label: Text(s), onPressed: () => _send(s)),
                     ),
                   const SizedBox(height: 12),
-                  Text('En cas de danger immédiat : 198 Protection civile · 190 SAMU · 197 Police',
-                      textAlign: TextAlign.center, style: TextStyle(color: cs.error)),
+                  Text(t('assistant.emergency'), textAlign: TextAlign.center, style: TextStyle(color: cs.error)),
                 ])
               : ListView.builder(
                   controller: _scroll,
@@ -123,16 +116,23 @@ class _AssistantScreenState extends State<AssistantScreen> {
                           if (m.tools.isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.only(top: 6),
-                              child: Text('🔧 ${m.tools.toSet().join(', ')}',
-                                  style: Theme.of(context).textTheme.bodySmall),
+                              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Icon(Icons.build_outlined, size: 13, color: cs.onSurfaceVariant),
+                                const SizedBox(width: 5),
+                                Expanded(
+                                    child: Text(m.tools.toSet().join(', '),
+                                        style: Theme.of(context).textTheme.bodySmall)),
+                              ]),
                             ),
                           if (m.draft != null)
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: FilledButton.tonalIcon(
                                 onPressed: () => widget.onUseDraft(m.draft!),
-                                icon: const Icon(Icons.edit_note),
-                                label: Text('Créer le signalement ${categoryOf(m.draft!.category ?? 'other').emoji}'),
+                                // The category's own icon rather than a generic
+                                // pencil: the button says what it will create.
+                                icon: Icon(catIcon(m.draft!.category ?? 'other')),
+                                label: Text(t('assistant.create')),
                               ),
                             ),
                         ]),
@@ -153,7 +153,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
                   maxLines: 4,
                   textInputAction: TextInputAction.send,
                   onSubmitted: _send,
-                  decoration: const InputDecoration(hintText: 'Votre message…', isDense: true),
+                  decoration: InputDecoration(hintText: t('assistant.hint'), isDense: true),
                 ),
               ),
               const SizedBox(width: 8),

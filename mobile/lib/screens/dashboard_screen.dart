@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../api.dart';
+import '../i18n.dart';
 import '../models.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -40,10 +41,12 @@ class DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
+    // Named `tt`, not `t`: `t` is the translation function from i18n.dart and a
+    // local of the same name would shadow it everywhere in this method.
+    final tt = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Tableau de bord citoyen')),
+      appBar: AppBar(title: Text(t('dash.title'))),
       body: RefreshIndicator(
         onRefresh: refresh,
         child: _d == null
@@ -54,22 +57,25 @@ class DashboardScreenState extends State<DashboardScreen> {
               ])
             : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 100), children: [
                 Row(children: [
-                  _kpi('${_d!['open']}', 'Ouverts', cs.primary),
-                  _kpi('${_d!['urgent']}', 'Urgents', priorityColor('critical')),
-                  _kpi('${_d!['sla_breached']}', 'Hors délai', priorityColor('high')),
+                  _kpi('${_d!['open']}', t('dash.open'), cs.primary),
+                  _kpi('${_d!['urgent']}', t('dash.urgent'), priorityColor('critical')),
+                  _kpi('${_d!['sla_breached']}', t('dash.overdue'), priorityColor('high')),
                 ]),
                 Row(children: [
-                  _kpi('${_d!['resolved']}', 'Résolus', priorityColor('low')),
+                  _kpi('${_d!['resolved']}', t('dash.resolved'), priorityColor('low')),
                   _kpi(_d!['mean_time_to_resolve_h'] == null ? '–' : '${_d!['mean_time_to_resolve_h']} h',
-                      'Délai moyen', cs.secondary),
-                  _kpi('${_d!['urgent_rate_pct']} %', "Taux d'urgence", cs.tertiary),
+                      t('dash.meantime'), cs.secondary),
+                  _kpi('${_d!['urgent_rate_pct']} %', t('dash.urgentrate'), cs.tertiary),
                 ]),
-                _section('Par catégorie', [
+                _section(Icons.donut_small_outlined, t('dash.bycategory'), [
+                  // The server also sends a French `label`; the key is what the
+                  // app translates, so the server's label is ignored here.
                   for (final e in (_d!['by_category'] as Map).entries)
-                    _bar(e.value['label'], e.value['count'] as int, _d!['open'] as int),
+                    _bar(catLabel(e.key), e.value['count'] as int, _d!['open'] as int,
+                        icon: catIcon(e.key)),
                 ]),
-                _section('🔥 Zones chaudes (clusters DBSCAN)', [
-                  if (_hot.isEmpty) const Text('Aucun cluster pour le moment.'),
+                _section(Icons.local_fire_department_outlined, t('dash.hotspots'), [
+                  if (_hot.isEmpty) Text(t('dash.hotspots.empty')),
                   for (final h in _hot.take(6))
                     ListTile(
                       contentPadding: EdgeInsets.zero,
@@ -77,25 +83,33 @@ class DashboardScreenState extends State<DashboardScreen> {
                           backgroundColor: priorityColor(h['mean_priority'] >= 55 ? 'high' : 'medium'),
                           child: Text('${h['count']}', style: const TextStyle(color: Colors.white))),
                       title: Text(h['zone']),
-                      subtitle: Text((h['categories'] as Map)
-                          .entries
-                          .map((e) => '${categoryOf(e.key).emoji} ${e.value}')
-                          .join('  ')),
+                      subtitle: Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Wrap(spacing: 12, children: [
+                          for (final e in (h['categories'] as Map).entries)
+                            Row(mainAxisSize: MainAxisSize.min, children: [
+                              Icon(catIcon(e.key), size: 15, color: cs.onSurfaceVariant),
+                              const SizedBox(width: 3),
+                              Text('${e.value}'),
+                            ]),
+                        ]),
+                      ),
                       trailing: Text('P ${h['mean_priority']}'),
                     ),
                 ]),
-                _section('🛣️ Indice de santé des routes', [
-                  if (_health.isEmpty) const Text('Aucun problème ouvert sur une route nommée.'),
+                _section(Icons.route_outlined, t('dash.roadhealth'), [
+                  if (_health.isEmpty) Text(t('dash.roadhealth.empty')),
                   for (final r in _health.take(8))
-                    _bar('${r['road']} · ${r['open_issues']} pb', (r['health_index'] as num).round(), 100,
+                    _bar("${r['road']} · ${r['open_issues']} ${t('dash.issues.short')}",
+                        (r['health_index'] as num).round(), 100,
                         color: (r['health_index'] as num) < 50 ? priorityColor('critical') : priorityColor('low')),
                 ]),
                 if (_sla.isNotEmpty)
-                  _section('⏱️ Délais dépassés', [
+                  _section(Icons.timer_outlined, t('dash.sla'), [
                     for (final s in _sla.take(6))
                       ListTile(
                         contentPadding: EdgeInsets.zero,
-                        leading: Text(categoryOf(s['category']).emoji, style: const TextStyle(fontSize: 24)),
+                        leading: Icon(catIcon(s['category']), color: priorityColor('critical')),
                         title: Text(s['road'] ?? ''),
                         subtitle: Text(s['service']),
                         trailing: Text('+${(s['remaining_hours'] as num).abs().round()} h',
@@ -103,10 +117,12 @@ class DashboardScreenState extends State<DashboardScreen> {
                       ),
                   ]),
                 if (_graph != null)
-                  _section('🕸️ Réseau routier analysé', [
-                    Text('${_graph!['nodes']} intersections · ${_graph!['edges']} tronçons · ${_graph!['total_km']} km'),
-                    Text('${_graph!['named_roads']} routes nommées · ${_graph!['bridges']} tronçons sans alternative'),
-                    Text('Redondance (nombre cyclomatique) : ${_graph!['cyclomatic_number']}', style: t.bodySmall),
+                  _section(Icons.hub_outlined, t('dash.network'), [
+                    Text('${_graph!['nodes']} ${t('dash.network.nodes')} · '
+                        '${_graph!['edges']} ${t('dash.network.edges')} · ${_graph!['total_km']} km'),
+                    Text('${_graph!['named_roads']} ${t('dash.network.roads')} · '
+                        '${_graph!['bridges']} ${t('dash.network.bridges')}'),
+                    Text('${t('dash.network.redundancy')} : ${_graph!['cyclomatic_number']}', style: tt.bodySmall),
                   ]),
               ]),
       ),
@@ -126,22 +142,36 @@ class DashboardScreenState extends State<DashboardScreen> {
         ),
       );
 
-  Widget _section(String title, List<Widget> children) => Card(
+  /// The icon identifies the section at a glance while scrolling; it sits in
+  /// the heading rather than inside the title string, so it keeps its own size
+  /// and colour and never arrives as a stray glyph in a sentence.
+  Widget _section(IconData icon, String title, List<Widget> children) => Card(
         margin: const EdgeInsets.only(top: 12),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
+            Row(children: [
+              Icon(icon, size: 19, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 8),
+              Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
+            ]),
+            const SizedBox(height: 10),
             ...children,
           ]),
         ),
       );
 
-  Widget _bar(String label, int value, int max, {Color? color}) => Padding(
+  Widget _bar(String label, int value, int max, {Color? color, IconData? icon}) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [Expanded(child: Text(label, overflow: TextOverflow.ellipsis)), Text('$value')]),
+          Row(children: [
+            if (icon != null) ...[
+              Icon(icon, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              const SizedBox(width: 6),
+            ],
+            Expanded(child: Text(label, overflow: TextOverflow.ellipsis)),
+            Text('$value'),
+          ]),
           const SizedBox(height: 4),
           LinearProgressIndicator(
               value: max == 0 ? 0 : value / max, minHeight: 8, color: color, borderRadius: BorderRadius.circular(4)),
